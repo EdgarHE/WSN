@@ -5,13 +5,19 @@ import socket
 import sys
 import math
 
+alpha = 1
+beta = 0.005
+gamma = 1
+
 routingTable = {}
 inNI = {} # In region node info
-outNI = {} # Out region node info
+seqT = {} #Sequence number
 radius = 5
 currNode = 'A' # Current Node
 currX = 0
 currY = 0
+currSeq = 1
+currEnergy = 100
 
 
 
@@ -22,7 +28,7 @@ def send_routing(HOST, PORT):
 
 	while True:
 			
-		s.sendto(data, addr)
+		s.sendto(genHelloMsg(), addr)
 
 		time.sleep(0.1)
 		
@@ -33,40 +39,23 @@ def storeReceiveMsg(recvData):
 	# 
 	data = recvData
 	blockNum = len(data.split(';'))
+	#print ("bnum%d"%blockNum)
 	if data.split(';')[0] == 'Hello':
-		seqNum = int(data.split(';')[1])
+		seqNum = data.split(';')[1]
 
 		sourceNodeStr = data.split(';')[2]
 		node = data.split(';')[2].split(',')[0]
 		nodeCoord = data.split(';')[2].split(',')[1]
+		if blockNum == 3:
+			addToInNI(node, seqNum, nodeCoord)
 
-		if blockNum > 3:
+		elif blockNum > 3:
 			inNeighborStr = data.split(';')[3]
 			nodeInfo = nodeCoord + ';' + inNeighborStr
-			state = addToInNI(node, seqNum, nodeInfo)
-			if state == -1:
-				return
-
-			if blockNum > 4:
-				outNeighborStr = data.split(';')[4]
-				outPath = outNeighborStr.split(',')[0]
-				outCost = outNeighborStr.split(',')[1]
-				addToOutNI(outPath, outCost)
-
-
+			addToInNI(node, seqNum, nodeInfo)
 			
 
 
-'''
-			neighborNum = length(inNeighborStr.split('/')) - 1
-
-			for i in range (0, neighborNum):
-				nodeName = data.split('/')[i].split(',', 1)[0]
-				posNeighbor = storeT.get(nodeName)
-				# if posNeighbor == None:
-				storeT[nodeName] = data.split('/')[i].split(',', 1)[1]
-				# else:
-'''
 			
 def findNodeInfo(node, num): # 0:Coord, 1:cost, 2:Path
 	nodeInfo = rT.get(node)
@@ -74,42 +63,44 @@ def findNodeInfo(node, num): # 0:Coord, 1:cost, 2:Path
 		infoStr = rT[nodeInfo].split(';')
 		return infoStr[num]
 
-def addToInNI(node, seq, info):
+def addSeqNum(node, seq):
+	global seqT
+	if seqT.get(node, 'None') != 'None':
+		if int(seqT[node].split(' ')[0]) < seq:
+			seqT[node] = str(seq) + ' ' + str(currSeq)
+	else :
+		seqT[node] = str(seq) + ' ' + str(currSeq)
+	
+
+def addToInNI(node, seqTime, info):
 	global inNI
+	seq = int(seqTime.split(',')[0])
+	time = seqTime.split(',')[1]
 	coord = info.split(';')[0]
 	x = int(coord.split(' ')[0])
 	y = int(coord.split(' ')[1])
-	dist = math.sqrt((x - currX)^2 + (y - currY)^2)
+	dist = math.sqrt((x - currX)**2 + (y - currY)**2)
 	if dist <= radius:
 		if inNI.get(node, 'None') != 'None':
-			currSeq = int(inNI[node].split(';')[0])
-			if seq > currSeq:
+			nodeSeq = int(seqT[node].split(' ')[0])
+			if seq > nodeSeq:
 				if inNI.get('index', 'None') != 'None':
 					inNI['index'] = inNI['index'] + ';' + node
 				else:
 					inNI['index'] = node
-				inNI[node] = str(seq) + ';' + info
-			else:
-				return -1
+				inNI[node] = time + ";" + info
+				addSeqNum(node, seq)
+			
 		else:
 			if inNI.get('index', 'None') != 'None':
 					inNI['index'] = inNI['index'] + ';' + node
 			else:
 				inNI['index'] = node 
-			inNI[node] = str(seq) + ';' + info
-		return 0
-	else:
-		return -1
+			inNI[node] = time + ";" + info
+			addSeqNum(node, seq)
+		
 
 
-	
-def addToOutNI(path, cost):
-	global outNI
-	if outNI.get('index', 'None') != 'None':
-		outNI['index'] = outNI['index'] + ';' + path
-	else:
-		outNI['index'] = path
-	outNI[path] = cost
 
 
 def updateRoutingTable():
@@ -122,48 +113,154 @@ def updateRoutingTable():
 			dealInNIMsg(node)
 			inNI.pop(node)
 		if length == 1:
-			inNI['index'] = ''
+			inNI.pop('index')
 		else:
 			inNI['index'] = inNI['index'].split(';',1)[1]
+			# if inNI['index'] == '':
+			# 	inNI.pop('index')
 
 
 
 	return
 
 def dealInNIMsg(node):
+	global routingTable
+	nodeName = node
+	nodeInfo = inNI[node]
+	nodeCoord = inNI[node].split(';')[1]
+	nodeTime = int(inNI[node].split(';')[0])
+	nodeCost = calCost(nodeCoord, nodeTime)
+	nodePath = nodeName
+	updateNodeInfo(nodeName, nodeCoord, nodeCost, nodePath)
+	#print (inNI[node])
+	if len(inNI[node].split(';'))>2:
+		nodeNum = len(inNI[node].split(';')[2].split('/'))
+		#print (nodeNum)
+		for i in range(0, nodeNum):
+			currNodeInfo = inNI[node].split(';')[2].split('/')[i]
+			currNodeName = currNodeInfo.split(',')[0]
+			currCoord = currNodeInfo.split(',')[1]
+			currNodeX = int(currCoord.split(' ')[0])
+			currNodeY = int(currCoord.split(' ')[1])
+			dist = math.sqrt((currNodeX - currX)**2 + (currNodeY - currY)**2)
+			
+			#print dist
+			if dist <= radius:
+				nodeInRTInfo = routingTable.get(nodeName, 'None')
+				if nodeInRTInfo!='None':
+					currCost = int(currNodeInfo.split(',')[2]) + int(nodeInRTInfo.split(';')[1])
+					currPath = nodeName + currNodeInfo.split(',')[3]
+					updateNodeInfo(currNodeName, currCoord, currCost, currPath)
+	#return
 
-	return
-'''
-def updateNodeInfo(node, num):
-	nodeInfo = rT.get(node)
-	if 
-'''
+
+def calCost(coord, nodeTime):
+	coordX = int(coord.split(' ')[0])
+	coordY = int(coord.split(' ')[1])
+	timehr = time.localtime(time.time()).tm_hour 
+	timemin = time.localtime(time.time()).tm_min
+	timesec = time.localtime(time.time()).tm_sec
+	currTime = 3600*timehr + 60*timemin + timesec
+	dTime = currTime - nodeTime
+	cost = int(alpha * math.exp(math.sqrt((coordX - currX)**2) + (coordY - currY)**2) + beta * dTime)
+	return cost
+
+
+def updateNodeInfo(node, coord, cost, path):
+	global routingTable
+	isInRT = routingTable.get(node, 'None')
+	if isInRT == 'None':
+		routingTable[node] = coord + ';' + str(cost) + ';' + path
+	else:
+		routingCost = int(isInRT.split(';')[1])
+		routingCoord = isInRT.split(';')[0]
+		# print('cost:' + str(cost))
+		# print('routingCost:' + path + str(routingCost))
+		if routingCoord != coord:
+
+			routingTable[node] = coord + ';' + str(cost) + ';' + path
+		if routingCost > cost:
+			routingTable[node] = coord + ';' + str(cost) + ';' + path
+
+	return 
+
+def genHelloMsg():
+	global currSeq
+	timehr = time.localtime(time.time()).tm_hour 
+	timemin = time.localtime(time.time()).tm_min
+	timesec = time.localtime(time.time()).tm_sec
+	currTime = 3600*timehr + 60*timemin + timesec
+	currSeq += 1
+	data = "Hello;" + str(currSeq) +',' + str(currTime) + ';' + currNode + ',' + str(currX) + ' ' + str(currY) + ';'
+	for key in routingTable:
+		data = data + key + ',' + routingTable[key] + '/'
+	data = data.rstrip('/')
+	return data
+
+def scanSeq():
+	global routingTable
+	for key in seqT:
+		nodes = []
+		if (currSeq - int(seqT[key].split(' ')[1])) > 5:
+			for node in routingTable:
+				if routingTable[node].find(key) != -1:
+					nodes.append(node)
+			for element in nodes:
+				routingTable.pop(element)
+
+
+
 
 '''test'''
-data = "Hello;2;B,3 0;C,1 0,5,C/D,5 5,10,D;AB,10"
+#data = "Hello;1,200;B,3 0;C,10 0,5,C/D,1 2,10,D"
+data = "Hello;1,200;B,1 1"
 storeReceiveMsg(data)
-print inNI
-print outNI
+# print outNI
+# print seqT
+updateRoutingTable()
 
-data = "Hello;1;D,3 0;C,1 0,5,C/E,5 5,10,E"
-storeReceiveMsg(data)
-print inNI
-print outNI
+# print "ud1"
+# print (inNI)
+#print (routingTable)
 
-data = "Hello;3;B,3 0;C,1 0,5,C/D,5 5,10,D;AB,20"
+#data = "Hello;1,500;D,1 2;C,10 0,5,C/E,5 5,10,E"
+data = "Hello;1,500;C,1 1;B,1 1,1000,B"
 storeReceiveMsg(data)
-print inNI
-print outNI
+#print (inNI)
+# print outNI
+# print seqT
+
+
+
+
+
+# print outNI
 
 updateRoutingTable()
-print "1"
-print inNI
+# # print "ud2"
+#print (routingTable)
+currSeq = 10
+
+data = "Hello;10,400;D,1 0;B,1 1,1,B"
+storeReceiveMsg(data)
+# # print outNI
 updateRoutingTable()
-print "2"
-print inNI
+print routingTable
+
+
+scanSeq()
+
+print routingTable
+
+data = "Hello;10,200;B,1 1;D,1 0,1,D"
+
+storeReceiveMsg(data)
+# # print outNI
 updateRoutingTable()
-print "3"
-print inNI
+print routingTable
+
+# print "ud3"
+# print (inNI)
 
 '''MAIN'''
 '''
