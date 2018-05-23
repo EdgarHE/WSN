@@ -16,23 +16,39 @@ radius = 5
 currNode = 'A' # Current Node
 currX = 0
 currY = 0
-currSeq = 1
+currSeq = 0
 currEnergy = 100
 
 
 
-def send_routing(HOST, PORT):
+def sendHello(PORT):
 	
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
-	addr = (HOST, PORT)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 	while True:
-			
-		s.sendto(genHelloMsg(), addr)
+		network = '<broadcast>'
+		addr = (network, PORT)
+		data = genHelloMsg()
+		s.sendto(data, addr)
+		print 'send: ' + data
 
-		time.sleep(0.1)
+		time.sleep(1)
 		
-	s.close()  
+	s.close()   
+	
+def recvHello(PORT):
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+	
+	s.bind(('', PORT))
+	
+	while True:
+		data, addr = s.recvfrom(100)
+		#storeReceiveMsg(data)
+		#print 'recv: ' + data
+		#updateRoutingTable()
+		print routingTable
 
 def storeReceiveMsg(recvData):
 	# Global Parameters
@@ -45,6 +61,10 @@ def storeReceiveMsg(recvData):
 
 		sourceNodeStr = data.split(';')[2]
 		node = data.split(';')[2].split(',')[0]
+		
+		if node == currNode:
+			return
+		
 		nodeCoord = data.split(';')[2].split(',')[1]
 		if blockNum == 3:
 			addToInNI(node, seqNum, nodeCoord)
@@ -212,6 +232,7 @@ def scanSeq():
 
 
 '''test'''
+'''
 #data = "Hello;1,200;B,3 0;C,10 0,5,C/D,1 2,10,D"
 data = "Hello;1,200;B,1 1"
 storeReceiveMsg(data)
@@ -261,18 +282,16 @@ print routingTable
 
 # print "ud3"
 # print (inNI)
-
-'''MAIN'''
 '''
+'''MAIN'''
+
 HOST = ''
 PORT = 8888
-
 try:
-	thread.start_new_thread( sendRouting, (HOST, PORT, ) )
-	
+	thread.start_new_thread( sendHello, (PORT, ) )
+	thread.start_new_thread( recvHello, (PORT, ) )
 except:
 	print "Error: unable to start thread"
-
 while 1:
 	pass
-'''
+
