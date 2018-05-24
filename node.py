@@ -370,10 +370,12 @@ def testSendPkt():
 	time.sleep(3)
 	coord_A = Coord(0,0)
 	coord_B = Coord(2,0)
+	coord_C = Coord(6,0)
 	nodeMap['A'] = coord_A
 	nodeMap['B'] = coord_B
-	pkt = genPkt('A', 'B', 'A')
-	sendPkt('B', pkt)
+	nodeMap['C'] = coord_C
+	pkt = genPkt('A', 'C', 'A')
+	sendPkt('C', pkt)
 	print 'SENDPKT#######################'
 	
 	
