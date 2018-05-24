@@ -111,18 +111,10 @@ def addToInNI(node, seqTime, info):
 		if inNI.get(node, 'None') != 'None':
 			nodeSeq = int(seqT[node].split(' ')[0])
 			if seq > nodeSeq:
-				if inNI.get('index', 'None') != 'None':
-					inNI['index'] = inNI['index'] + ';' + node
-				else:
-					inNI['index'] = node
 				inNI[node] = time + ";" + info
 				addSeqNum(node, seq)
 			
 		else:
-			if inNI.get('index', 'None') != 'None':
-					inNI['index'] = inNI['index'] + ';' + node
-			else:
-				inNI['index'] = node 
 			inNI[node] = time + ";" + info
 			addSeqNum(node, seq)
 		
@@ -135,21 +127,16 @@ def updateRoutingTable():
 	
 	while True:
 		storeRT_state.acquire()
-
-		if inNI.get('index', 'None') == 'None':
-			length = 0
-		else:
-			length = len(inNI['index'].split(';'))
-		if length > 0:
-			node = inNI['index'].split(';')[0]
-
-			if inNI.get(node, 'None') != 'None':
-				dealInNIMsg(node)
-				inNI.pop(node)
-			if length == 1:
-				inNI.pop('index')
-			else:
-				inNI['index'] = inNI['index'].split(';',1)[1]
+		
+		tmp = []
+		for key in inNI:
+			tmp.append(key)
+		
+		for key2 in tmp:
+		
+			dealInNIMsg(key2)
+			inNI.pop(key2)
+			
 		storeRT_state.release()
 		time.sleep(1)
 		
