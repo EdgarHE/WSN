@@ -263,89 +263,101 @@ def scanSeq():
 			
 
 
-def getEdge(source, destination): # destination_node is a node outside the range (i.e. final destination)
-	#global routingTable
-	vector1X = nodeMap[destination].x - nodeMap[source].x  # vector_X from source to destination
-	vector1Y = nodeMap[destination].y - nodeMap[source].y  # vector_Y from source to destination
-	product = -10000  # means negative infinity
-	if len(routingTable) > 0:
-		for node in routingTable:
-			location = routingTable[node].split(';')[0]
-			locationX = float(location.split(' ')[0])
-			locationY = float(location.split(' ')[1])
-			vector2X = locationX - nodeMap[source].x  # vector_X from source to neighbor
-			vector2Y = locationY - nodeMap[source].y  # vector_Y from source to neighbor
-			newproduct = vector1X * vector2X + vector1Y * vector2Y
-			if newproduct > product:  # record the max_product
-				product = newproduct
-				edge = node
-		return edge
-	else:
-		return 'None'
+def getEdge(source, destination):  # destination_node is a node outside the range (i.e. final destination)
+    # global routingTable
+    vector1X = nodeMap[destination].x - nodeMap[source].x  # vector_X from source to destination
+    vector1Y = nodeMap[destination].y - nodeMap[source].y  # vector_Y from source to destination
+    product = -10000  # means negative infinity
+    if len(routingTable) > 0:
+        for node in routingTable:
+            location = routingTable[node].split(';')[0]
+            locationX = float(location.split(' ')[0])
+            locationY = float(location.split(' ')[1])
+            vector2X = locationX - nodeMap[source].x  # vector_X from source to neighbor
+            vector2Y = locationY - nodeMap[source].y  # vector_Y from source to neighbor
+            newproduct = vector1X * vector2X + vector1Y * vector2Y
+            if newproduct > product:  # record the max_product
+                product = newproduct
+                edge = node
+        return edge
+    else:
+        return 'None'
 
-def createPath(destination): # destination_node is a node in the range (i.e. edge node)
-	storeNI_state.acquire()
-	path_string = routingTable[destination].split(';')[2]
-	storeNI_state.release()
-	count = len(path_string) - 1
-	path = []
-	while count >= 0:
-		path.append(path_string[count])
-		count = count - 1
-	return path
-	
-def genPkt(source_node, destination_node, current_node): # destination_node is a node outside the range (i.e. final destination)
-	packet = {}
-	packet.update(source = source_node)
-	packet.update(destination = destination_node)
-	packet.update(edge = getEdge(current_node, destination_node)) # Edge is a node at the edge of the range
-	packet.update(content = "I am a cute packet from " + source_node + " to " + destination_node)
-	packet.update(pathToEdge = createPath(destination_node))
-	return packet
-	
-def recvAndTreatPkt(): # receive, check, print or route/send the packet
 
-	HOST = ipTable[currNode]
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.bind((HOST, PORT_RECV))
-	#s.listen(1)
-	while True:
-		#conn, addr = s.accept()
-		#print'Connected by', addr
-		data= s.recv(10024)
-		#if len(data.strip()) == 0:
-			#conn.sendall('Done.')
-		#else:
-		packet = eval(data) # retrive the dictionary from string, packet is a dictionary
-		if currNode == packet['destination']: # current node is the destination, print the detail about the packet
-			print("I received a packet from " + packet['source'])
-			print("Packet contains:")
-			print(packet['content'])
-		elif currNode == packet['edge']: # current node is the edge so calculate new route path in the range
-			newpacket = genPkt(packet['source'],packet['destination'], currNode)
-			nextHop = packet['pathToEdge'].pop()
-			sendPkt(nextHop, packet)
-		else: # current is a node in the range, route the packet to the next hop
-			try:
-				nextHop = packet['pathToEdge'].pop()
-			except:
-				print("The pathToEdge term is empty, nothing to be popped")
-			sendPkt(nextHop, packet)
 
-	#s.close()
+def createPath(destination):  # destination_node is a node in the range (i.e. edge node)
+    storeNI_state.acquire()
+    path_string = routingTable[destination].split(';')[2]
+    storeNI_state.release()
+    count = len(path_string) - 1
+    path = []
+    while count >= 0:
+        path.append(path_string[count])
+        count = count - 1
+    return path
 
-def sendPkt(destination, packet): # send packet to the next hop, packet is a dictionary
-	global currNode
-	global ipTable
-	global PORT_SEND
-	HOST = ipTable[destination]
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	addr = (HOST, PORT_SEND)
-	#s.connect((HOST, PORT_SEND))
-	s.sendto(repr(packet),addr)
-	s.close()
-    
 
+def genPkt(source_node, destination_node,
+           current_node):  # destination_node is a node outside the range (i.e. final destination)
+    packet = {}
+    packet.update(source=source_node)
+    packet.update(destination=destination_node)
+    packet.update(edge=getEdge(current_node, destination_node))  # Edge is a node at the edge of the range
+    packet.update(content="I am a cute packet from " + source_node + " to " + destination_node)
+    packet.update(pathToEdge=createPath(getEdge(current_node, destination_node)))
+    packet.update(routingPath=[])
+    return packet
+
+
+def recvAndTreatPkt():  # receive, check, print or route/send the packet
+
+    HOST = ipTable[currNode]
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind((HOST, PORT_RECV))
+    # s.listen(1)
+    while True:
+        # conn, addr = s.accept()
+        # print'Connected by', addr
+        data = s.recv(10024)
+        # if len(data.strip()) == 0:
+        # conn.sendall('Done.')
+        # else:
+        packet = eval(data)  # retrive the dictionary from string, packet is a dictionary
+        if currNode == packet['destination']:  # current node is the destination, print the detail about the packet
+            print("I received a packet from " + packet['source'])
+            print("Packet contains:")
+            print(packet['content'])
+            print("Routing path is:")
+            print(packet['routingPath'])
+        elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
+            newpacket = genPkt(packet['source'], packet['destination'], currNode)
+            if newpacket['edge'] != 'None':
+            	newpacket['routingPath'].append(currNode)
+            	nextHop = newpacket['pathToEdge'].pop()
+            	sendPkt(nextHop, newpacket)
+            else:
+				print("routing table is empty!")
+        else:  # current is a node in the range, route the packet to the next hop
+            try:
+                nextHop = packet['pathToEdge'].pop()
+            except:
+                print("The pathToEdge term is empty, nothing to be popped")
+            packet['routingPath'].append(currNode)
+            sendPkt(nextHop, packet)
+
+
+# s.close()
+
+def sendPkt(destination, packet):  # send packet to the next hop, packet is a dictionary
+    global currNode
+    global ipTable
+    global PORT_SEND
+    HOST = ipTable[destination]
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    addr = (HOST, PORT_SEND)
+    # s.connect((HOST, PORT_SEND))
+    s.sendto(repr(packet), addr)
+    s.close()
 
 def changeVariable():
 	global currX, currY
@@ -375,7 +387,9 @@ def testSendPkt():
 	nodeMap['B'] = coord_B
 	nodeMap['C'] = coord_C
 	pkt = genPkt('A', 'C', 'A')
-	sendPkt('C', pkt)
+	nexthop = pkt['pathToEdge'].pop()
+	pkt['routingPath'].append(currNode)
+	sendPkt(nexthop, pkt)
 	print 'SENDPKT#######################'
 	
 	
