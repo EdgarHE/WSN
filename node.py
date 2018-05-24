@@ -5,6 +5,12 @@ import time
 import socket
 import sys
 import math
+import struct
+import fcntl
+
+def getip(ethname):
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	return socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0X8915, struct.pack('256s', ethname[:15]))[20:24])
 
 
 alpha = 1
@@ -14,15 +20,19 @@ gamma = 1
 routingTable = {}
 inNI = {} # In region node info
 seqT = {} #Sequence number
+ipTable = {}
 radius = 5
 currNode = 'A' # Current Node
 currX = 0
 currY = 0
 currSeq = 0
 currEnergy = 100
+currIP = getip('eth0')
+print currIP
 
 storeNI_state = threading.Lock()
 storeRT_state = threading.Lock()
+
 
 def sendHello(PORT):
 	
@@ -30,6 +40,7 @@ def sendHello(PORT):
 	s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 	while True:
+		data = ''
 		network = '<broadcast>'
 		addr = (network, PORT)
 		data = genHelloMsg()
@@ -51,10 +62,11 @@ def recvHello(PORT):
 		storeNI_state.acquire()
 		storeReceiveMsg(data)
 		storeNI_state.release()
-		print inNI
+		#print inNI
 		#print 'recv: ' + data
 		#updateRoutingTable()
 		print routingTable
+		print ipTable
 		
 
 def storeReceiveMsg(recvData):
@@ -71,15 +83,16 @@ def storeReceiveMsg(recvData):
 		
 		if node == currNode:
 			return
-		
+		print 'data   ' + data
 		nodeCoord = data.split(';')[2].split(',')[1]
+		nodeIP = data.split(';')[2].split(',')[2]
 		if blockNum == 3:
-			addToInNI(node, seqNum, nodeCoord)
+			addToInNI(node, seqNum, nodeCoord, nodeIP)
 
 		elif blockNum > 3:
 			inNeighborStr = data.split(';')[3]
 			nodeInfo = nodeCoord + ';' + inNeighborStr
-			addToInNI(node, seqNum, nodeInfo)
+			addToInNI(node, seqNum, nodeInfo, nodeIP)
 			
 
 
@@ -99,7 +112,7 @@ def addSeqNum(node, seq):
 		seqT[node] = str(seq) + ' ' + str(currSeq)
 	
 
-def addToInNI(node, seqTime, info):
+def addToInNI(node, seqTime, info, nodeIP):
 	global inNI
 	seq = int(seqTime.split(',')[0])
 	time = seqTime.split(',')[1]
@@ -113,12 +126,16 @@ def addToInNI(node, seqTime, info):
 			if seq > nodeSeq:
 				inNI[node] = time + ";" + info
 				addSeqNum(node, seq)
+				addIP(node, nodeIP)
 			
 		else:
 			inNI[node] = time + ";" + info
 			addSeqNum(node, seq)
+			addIP(node, nodeIP)
 		
-
+def addIP(node, nodeIP):
+	global ipTable
+	ipTable[node] = nodeIP
 
 
 
@@ -212,7 +229,7 @@ def genHelloMsg():
 	timesec = time.localtime(time.time()).tm_sec
 	currTime = 3600*timehr + 60*timemin + timesec
 	currSeq += 1
-	data = "Hello;" + str(currSeq) +',' + str(currTime) + ';' + currNode + ',' + str(currX) + ' ' + str(currY)
+	data = "Hello;" + str(currSeq) +',' + str(currTime) + ';' + currNode + ',' + str(currX) + ' ' + str(currY) + ',' + currIP
 	if len(routingTable)>0:
 		data = data + ';'
 	for key in routingTable:
