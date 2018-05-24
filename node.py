@@ -7,6 +7,7 @@ import sys
 import math
 import struct
 import fcntl
+#import nextHop_test
 
 def getip(ethname):
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -30,8 +31,10 @@ currEnergy = 100
 currIP = getip('eth0')
 print currIP
 
+send_state = threading.Lock()
 storeNI_state = threading.Lock()
 storeRT_state = threading.Lock()
+pktRecv_state = threading.Lock()
 
 
 def sendHello(PORT):
@@ -45,8 +48,9 @@ def sendHello(PORT):
 		addr = (network, PORT)
 		data = genHelloMsg()
 		s.sendto(data, addr)
+		storeNI_state.acquire()
 		print 'send: ' + data
-
+		storeNI_state.release()
 		time.sleep(1)
 		
 	s.close()   
@@ -61,12 +65,9 @@ def recvHello(PORT):
 		data, addr = s.recvfrom(100)
 		storeNI_state.acquire()
 		storeReceiveMsg(data)
-		storeNI_state.release()
-		#print inNI
-		#print 'recv: ' + data
-		#updateRoutingTable()
 		print routingTable
-		print ipTable
+		storeNI_state.release()
+		
 		
 
 def storeReceiveMsg(recvData):
@@ -143,7 +144,7 @@ def updateRoutingTable():
 	global inNI
 	
 	while True:
-		storeRT_state.acquire()
+		storeNI_state.acquire()
 		
 		tmp = []
 		for key in inNI:
@@ -154,7 +155,7 @@ def updateRoutingTable():
 			dealInNIMsg(key2)
 			inNI.pop(key2)
 		scanSeq()
-		storeRT_state.release()
+		storeNI_state.release()
 		time.sleep(1)
 		
 
@@ -253,14 +254,64 @@ def scanSeq():
 				if routingTable.get(element, 'None') != 'None':
 					routingTable.pop(element)
 					ipTable.pop(element)
+			seqT[key] = str(0) + ' ' + str(currSeq)
 			'''
 			if routingTable.get(key, 'None') != 'None':
 				routingTable.pop(key)
 				ipTable.pop(key)
 			'''
+			
+def Projection_NextHop(coord): # coord = x y
 
+	coordX = float(coord.split(' ', 1)[0])
+	coordY = float(coord.split(' ', 1)[1])
+	vector1X = coordX - currX # vector_X from source to destination
+	vector1Y = coordY - currY # vector_Y from source to destination
+	product = -10000 # means negative infinity
+	nexthop = ''
+	if len(routingTable) > 0:
+		for node in routingTable:
+			location = routingTable[node].split(';')[0]
+			locationX = float(location.split(' ')[0])
+			locationY = float(location.split(' ')[1])
+			vector2X = locationX - currX # vector_X from source to neighbor
+			vector2Y = locationY - currY # vector_Y from source to neighbor
+			newproduct = vector1X*vector2X + vector1Y*vector2Y
+			if newproduct > product: # record the max_product
+				product = newproduct
+				nexthop = node
+		return nexthop
+	else:
+		return 'None'
 
+def nextH():
+	while True:
+		pktRecv_state.acquire()
+		a = Projection_NextHop('20 10')
+		print a
+		pktRecv_state.release()
+		time.sleep(2)
 
+def changeVariable():
+	global currX, currY
+	while True:
+		data = raw_input()
+		if data.find('coord:') != -1:
+			coord = data.split(':')[1]
+			if coord.find(' ') != -1:
+				x = coord.split(' ')[0]
+				y = coord.split(' ')[1]
+				if x.isdigit() and y.isdigit() :
+					currX = int(x)
+					currY = int(y)
+				else:
+					print 'Invalid Input'
+			else:
+				print 'Invalid Input'
+		else:
+			print 'Invalid Input'
+			
+			
 
 '''test'''
 '''
@@ -322,6 +373,8 @@ try:
 	thread.start_new_thread( sendHello, (PORT, ) )
 	thread.start_new_thread( recvHello, (PORT, ) )
 	thread.start_new_thread( updateRoutingTable, ( ) )
+	thread.start_new_thread( nextH, ( ) )
+	thread.start_new_thread( changeVariable, ( ) )
 except:
 	print "Error: unable to start thread"
 while 1:
