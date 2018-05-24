@@ -7,7 +7,6 @@ import sys
 import math
 import struct
 import fcntl
-import nextHop_test
 
 def getip(ethname):
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -367,7 +366,7 @@ def changeVariable():
 			print 'Invalid Input'
 			
 def testSendPkt():
-	sleep.time(10)
+	time.sleep(10)
 	coord_A = Coord(0,0)
 	coord_B = Coord(2,0)
 	nodeMap['A'] = coord_A
@@ -385,12 +384,15 @@ PORT = 8888 #routing table
 
 PORT_SEND = 23333 #packet
 PORT_RECV = 23334
+
+ipTable[currNode] = currIP
 try:
 	thread.start_new_thread( sendHello, (PORT, ) )
 	thread.start_new_thread( recvHello, (PORT, ) )
 	thread.start_new_thread( updateRoutingTable, ( ) )
-	thread.start_new_thread( nextH, ( ) )
 	thread.start_new_thread( changeVariable, ( ) )
+	thread.start_new_thread( testSendPkt, ( ) )
+	thread.start_new_thread( recvAndTreatPkt, ( ) )
 except:
 	print "Error: unable to start thread"
 while 1:
