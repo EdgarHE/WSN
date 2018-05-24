@@ -292,6 +292,7 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
             newpacket = genPkt(packet['source'], packet['destination'], currNode)
             if newpacket['edge'] != 'None':
+	    	newpacket['routingPath'] = packet['routingPath']
             	newpacket['routingPath'].append(currNode)
             	nextHop = newpacket['pathToEdge'].pop()
             	sendPkt(nextHop, newpacket)
