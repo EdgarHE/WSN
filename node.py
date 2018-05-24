@@ -153,7 +153,7 @@ def updateRoutingTable():
 		
 			dealInNIMsg(key2)
 			inNI.pop(key2)
-			
+		scanSeq()
 		storeRT_state.release()
 		time.sleep(1)
 		
@@ -242,6 +242,7 @@ def genHelloMsg():
 
 def scanSeq():
 	global routingTable
+	global ipTable
 	for key in seqT:
 		nodes = []
 		if (currSeq - int(seqT[key].split(' ')[1])) > 5:
@@ -249,7 +250,14 @@ def scanSeq():
 				if routingTable[node].find(key) != -1:
 					nodes.append(node)
 			for element in nodes:
-				routingTable.pop(element)
+				if routingTable.get(element, 'None') != 'None':
+					routingTable.pop(element)
+					ipTable.pop(element)
+			'''
+			if routingTable.get(key, 'None') != 'None':
+				routingTable.pop(key)
+				ipTable.pop(key)
+			'''
 
 
 
