@@ -292,7 +292,7 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
             newpacket = genPkt(packet['source'], packet['destination'], currNode)
             if newpacket['edge'] != 'None':
-            	newpacket[routingPath].append(currNode)
+            	newpacket['routingPath'].append(currNode)
             	nextHop = newpacket['pathToEdge'].pop()
             	sendPkt(nextHop, newpacket)
             else:
@@ -302,7 +302,7 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
                 nextHop = packet['pathToEdge'].pop()
             except:
                 print("The pathToEdge term is empty, nothing to be popped")
-            packet[routingPath].append(currNode)
+            packet['routingPath'].append(currNode)
             sendPkt(nextHop, packet)
 
 
