@@ -287,11 +287,16 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
             print("I received a packet from " + packet['source'])
             print("Packet contains:")
             print(packet['content'])
+            print("Routing path is:")
+            print(packet['routingPath'])
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
             newpacket = genPkt(packet['source'], packet['destination'], currNode)
-            newpacket[routingPath].append(currNode)
-            nextHop = newpacket['pathToEdge'].pop()
-            sendPkt(nextHop, newpacket)
+            if newpacket['edge'] != 'None':
+            	newpacket[routingPath].append(currNode)
+            	nextHop = newpacket['pathToEdge'].pop()
+            	sendPkt(nextHop, newpacket)
+            else:
+				print("routing table is empty!")
         else:  # current is a node in the range, route the packet to the next hop
             try:
                 nextHop = packet['pathToEdge'].pop()
