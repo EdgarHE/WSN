@@ -1,9 +1,11 @@
 #!python2
 import thread
+import threading
 import time
 import socket
 import sys
 import math
+
 
 alpha = 1
 beta = 0.005
@@ -19,7 +21,8 @@ currY = 0
 currSeq = 0
 currEnergy = 100
 
-
+storeNI_state = threading.Lock()
+storeRT_state = threading.Lock()
 
 def sendHello(PORT):
 	
@@ -45,10 +48,14 @@ def recvHello(PORT):
 	
 	while True:
 		data, addr = s.recvfrom(100)
-		#storeReceiveMsg(data)
+		storeNI_state.acquire()
+		storeReceiveMsg(data)
+		storeNI_state.release()
+		print inNI
 		#print 'recv: ' + data
 		#updateRoutingTable()
 		print routingTable
+		
 
 def storeReceiveMsg(recvData):
 	# Global Parameters
@@ -125,23 +132,28 @@ def addToInNI(node, seqTime, info):
 
 def updateRoutingTable():
 	global inNI
-	length = len(inNI['index'].split(';'))
-	if length > 0:
-		node = inNI['index'].split(';')[0]
+	
+	while True:
+		storeRT_state.acquire()
 
-		if inNI.get(node, 'None') != 'None':
-			dealInNIMsg(node)
-			inNI.pop(node)
-		if length == 1:
-			inNI.pop('index')
+		if inNI.get('index', 'None') == 'None':
+			length = 0
 		else:
-			inNI['index'] = inNI['index'].split(';',1)[1]
-			# if inNI['index'] == '':
-			# 	inNI.pop('index')
+			length = len(inNI['index'].split(';'))
+		if length > 0:
+			node = inNI['index'].split(';')[0]
 
+			if inNI.get(node, 'None') != 'None':
+				dealInNIMsg(node)
+				inNI.pop(node)
+			if length == 1:
+				inNI.pop('index')
+			else:
+				inNI['index'] = inNI['index'].split(';',1)[1]
+		storeRT_state.release()
+		time.sleep(1)
+		
 
-
-	return
 
 def dealInNIMsg(node):
 	global routingTable
@@ -182,7 +194,7 @@ def calCost(coord, nodeTime):
 	timesec = time.localtime(time.time()).tm_sec
 	currTime = 3600*timehr + 60*timemin + timesec
 	dTime = currTime - nodeTime
-	cost = int(alpha * math.exp(math.sqrt((coordX - currX)**2) + (coordY - currY)**2) + beta * dTime)
+	cost = int(alpha * (2**(math.sqrt((coordX - currX)**2) + (coordY - currY)**2)) + beta * dTime)
 	return cost
 
 
@@ -290,6 +302,7 @@ PORT = 8888
 try:
 	thread.start_new_thread( sendHello, (PORT, ) )
 	thread.start_new_thread( recvHello, (PORT, ) )
+	thread.start_new_thread( updateRoutingTable, ( ) )
 except:
 	print "Error: unable to start thread"
 while 1:
