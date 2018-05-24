@@ -7,7 +7,7 @@ import sys
 import math
 import struct
 import fcntl
-#import nextHop_test
+import nextHop_test
 
 def getip(ethname):
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -22,6 +22,7 @@ routingTable = {}
 inNI = {} # In region node info
 seqT = {} #Sequence number
 ipTable = {}
+nodeMap = {} #'A':coord_A  coord_A = Coord(1,1)
 radius = 5
 currNode = 'A' # Current Node
 currX = 0
@@ -37,6 +38,11 @@ storeRT_state = threading.Lock()
 pktRecv_state = threading.Lock()
 
 
+class Coord:
+    def __init__(self, coordx, coordy):
+        self.x = coordx
+        self.y = coordy
+        
 def sendHello(PORT):
 	
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
@@ -255,42 +261,91 @@ def scanSeq():
 					routingTable.pop(element)
 					ipTable.pop(element)
 			seqT[key] = str(0) + ' ' + str(currSeq)
-			'''
-			if routingTable.get(key, 'None') != 'None':
-				routingTable.pop(key)
-				ipTable.pop(key)
-			'''
 			
-def Projection_NextHop(coord): # coord = x y
 
-	coordX = float(coord.split(' ', 1)[0])
-	coordY = float(coord.split(' ', 1)[1])
-	vector1X = coordX - currX # vector_X from source to destination
-	vector1Y = coordY - currY # vector_Y from source to destination
-	product = -10000 # means negative infinity
-	nexthop = ''
+
+def getEdge(source, destination): # destination_node is a node outside the range (i.e. final destination)
+	#global routingTable
+	vector1X = nodeMap[destination].x - nodeMap[source].x  # vector_X from source to destination
+	vector1Y = nodeMap[destination].y - nodeMap[source].y  # vector_Y from source to destination
+	product = -10000  # means negative infinity
 	if len(routingTable) > 0:
 		for node in routingTable:
 			location = routingTable[node].split(';')[0]
 			locationX = float(location.split(' ')[0])
 			locationY = float(location.split(' ')[1])
-			vector2X = locationX - currX # vector_X from source to neighbor
-			vector2Y = locationY - currY # vector_Y from source to neighbor
-			newproduct = vector1X*vector2X + vector1Y*vector2Y
-			if newproduct > product: # record the max_product
+			vector2X = locationX - nodeMap[source].x  # vector_X from source to neighbor
+			vector2Y = locationY - nodeMap[source].y  # vector_Y from source to neighbor
+			newproduct = vector1X * vector2X + vector1Y * vector2Y
+			if newproduct > product:  # record the max_product
 				product = newproduct
-				nexthop = node
-		return nexthop
+				edge = node
+		return edge
 	else:
 		return 'None'
 
-def nextH():
+def createPath(destination): # destination_node is a node in the range (i.e. edge node)
+	storeNI_state.acquire()
+	path_string = routingTable[destination].split(';')[2]
+	storeNI_state.release()
+	count = len(path_string) - 1
+	path = []
+	while count >= 0:
+		path.append(path_string[count])
+		count = count - 1
+	return path
+	
+def genPkt(source_node, destination_node, current_node): # destination_node is a node outside the range (i.e. final destination)
+	packet = {}
+	packet.update(source = source_node)
+	packet.update(destination = destination_node)
+	packet.update(edge = getEdge(current_node, destination_node)) # Edge is a node at the edge of the range
+	packet.update(content = "I am a cute packet from " + source_node + " to " + destination_node)
+	packet.update(pathToEdge = createPath(destination_node))
+	return packet
+	
+def recvAndTreatPkt(): # receive, check, print or route/send the packet
+
+	HOST = ipTable[currNode]
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.bind((HOST, PORT_RECV))
+	s.listen(1)
 	while True:
-		pktRecv_state.acquire()
-		a = Projection_NextHop('20 10')
-		print a
-		pktRecv_state.release()
-		time.sleep(2)
+		conn, addr = s.accept()
+		print'Connected by', addr
+		data = conn.recv(10024)
+		if len(data.strip()) == 0:
+			conn.sendall('Done.')
+		else:
+			packet = eval(data) # retrive the dictionary from string, packet is a dictionary
+			if currNode == packet['destination']: # current node is the destination, print the detail about the packet
+				print("I received a packet from " + packet['source'])
+				print("Packet contains:")
+				print(packet['content'])
+			elif currNode == packet['edge']: # current node is the edge so calculate new route path in the range
+				newpacket = genPkt(packet['source'],packet['destination'], currNode)
+				nextHop = packet['pathToEdge'].pop()
+				sendPkt(nextHop, packet)
+			else: # current is a node in the range, route the packet to the next hop
+				try:
+					nextHop = packet['pathToEdge'].pop()
+				except:
+					print("The pathToEdge term is empty, nothing to be popped")
+				sendPkt(nextHop, packet)
+
+		conn.close()
+
+def sendPkt(destination, packet): # send packet to the next hop, packet is a dictionary
+	global currNode
+	global ipTable
+	global PORT_SEND
+	HOST = ipTable[destination]
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.connect((HOST, PORT_SEND))
+	s.sendall(repr(packet))
+	s.close()
+    
+
 
 def changeVariable():
 	global currX, currY
@@ -311,64 +366,25 @@ def changeVariable():
 		else:
 			print 'Invalid Input'
 			
-			
+def testSendPkt():
+	sleep.time(10)
+	coord_A = Coord(0,0)
+	coord_B = Coord(2,0)
+	nodeMap['A'] = coord_A
+	nodeMap['B'] = coord_B
+	pkt = genPkt('A', 'B', 'A')
+	sendPkt('B', pkt)
+	
+	
+	
 
-'''test'''
-'''
-#data = "Hello;1,200;B,3 0;C,10 0,5,C/D,1 2,10,D"
-data = "Hello;1,200;B,1 1"
-storeReceiveMsg(data)
-# print outNI
-# print seqT
-updateRoutingTable()
-
-# print "ud1"
-# print (inNI)
-#print (routingTable)
-
-#data = "Hello;1,500;D,1 2;C,10 0,5,C/E,5 5,10,E"
-data = "Hello;1,500;C,1 1;B,1 1,1000,B"
-storeReceiveMsg(data)
-#print (inNI)
-# print outNI
-# print seqT
-
-
-
-
-
-# print outNI
-
-updateRoutingTable()
-# # print "ud2"
-#print (routingTable)
-currSeq = 10
-
-data = "Hello;10,400;D,1 0;B,1 1,1,B"
-storeReceiveMsg(data)
-# # print outNI
-updateRoutingTable()
-print routingTable
-
-
-scanSeq()
-
-print routingTable
-
-data = "Hello;10,200;B,1 1;D,1 0,1,D"
-
-storeReceiveMsg(data)
-# # print outNI
-updateRoutingTable()
-print routingTable
-
-# print "ud3"
-# print (inNI)
-'''
 '''MAIN'''
 
 HOST = ''
-PORT = 8888
+PORT = 8888 #routing table
+
+PORT_SEND = 23333 #packet
+PORT_RECV = 23334
 try:
 	thread.start_new_thread( sendHello, (PORT, ) )
 	thread.start_new_thread( recvHello, (PORT, ) )
