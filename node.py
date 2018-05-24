@@ -158,18 +158,20 @@ def dealInNIMsg(node):
 		for i in range(0, nodeNum):
 			currNodeInfo = inNI[node].split(';')[2].split('/')[i]
 			currNodeName = currNodeInfo.split(',')[0]
-			currCoord = currNodeInfo.split(',')[1]
-			currNodeX = int(currCoord.split(' ')[0])
-			currNodeY = int(currCoord.split(' ')[1])
-			dist = math.sqrt((currNodeX - currX)**2 + (currNodeY - currY)**2)
 			
-			#print dist
-			if dist <= radius:
-				nodeInRTInfo = routingTable.get(nodeName, 'None')
-				if nodeInRTInfo!='None':
-					currCost = int(currNodeInfo.split(',')[2]) + int(nodeInRTInfo.split(';')[1])
-					currPath = nodeName + currNodeInfo.split(',')[3]
-					updateNodeInfo(currNodeName, currCoord, currCost, currPath)
+			if currNodeName != currNode:
+				currCoord = currNodeInfo.split(',')[1]
+				currNodeX = int(currCoord.split(' ')[0])
+				currNodeY = int(currCoord.split(' ')[1])
+				dist = math.sqrt((currNodeX - currX)**2 + (currNodeY - currY)**2)
+				
+				#print dist
+				if dist <= radius:
+					nodeInRTInfo = routingTable.get(nodeName, 'None')
+					if nodeInRTInfo!='None':
+						currCost = int(currNodeInfo.split(',')[2]) + int(nodeInRTInfo.split(';')[1])
+						currPath = nodeName + currNodeInfo.split(',')[3]
+						updateNodeInfo(currNodeName, currCoord, currCost, currPath)
 	#return
 
 
@@ -210,9 +212,14 @@ def genHelloMsg():
 	timesec = time.localtime(time.time()).tm_sec
 	currTime = 3600*timehr + 60*timemin + timesec
 	currSeq += 1
-	data = "Hello;" + str(currSeq) +',' + str(currTime) + ';' + currNode + ',' + str(currX) + ' ' + str(currY) + ';'
+	data = "Hello;" + str(currSeq) +',' + str(currTime) + ';' + currNode + ',' + str(currX) + ' ' + str(currY)
+	if len(routingTable)>0:
+		data = data + ';'
 	for key in routingTable:
-		data = data + key + ',' + routingTable[key] + '/'
+		coord = routingTable[key].split(';')[0]
+		cost = routingTable[key].split(';')[1]
+		path = routingTable[key].split(';')[2]
+		data = data + key + ',' + coord + ',' + cost + ',' + path + '/'
 	data = data.rstrip('/')
 	return data
 
