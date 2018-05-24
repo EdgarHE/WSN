@@ -306,42 +306,43 @@ def genPkt(source_node, destination_node, current_node): # destination_node is a
 def recvAndTreatPkt(): # receive, check, print or route/send the packet
 
 	HOST = ipTable[currNode]
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	s.bind((HOST, PORT_RECV))
-	s.listen(1)
+	#s.listen(1)
 	while True:
-		conn, addr = s.accept()
-		print'Connected by', addr
-		data = conn.recv(10024)
-		if len(data.strip()) == 0:
-			conn.sendall('Done.')
-		else:
-			packet = eval(data) # retrive the dictionary from string, packet is a dictionary
-			if currNode == packet['destination']: # current node is the destination, print the detail about the packet
-				print("I received a packet from " + packet['source'])
-				print("Packet contains:")
-				print(packet['content'])
-			elif currNode == packet['edge']: # current node is the edge so calculate new route path in the range
-				newpacket = genPkt(packet['source'],packet['destination'], currNode)
+		#conn, addr = s.accept()
+		#print'Connected by', addr
+		data= s.recv(10024)
+		#if len(data.strip()) == 0:
+			#conn.sendall('Done.')
+		#else:
+		packet = eval(data) # retrive the dictionary from string, packet is a dictionary
+		if currNode == packet['destination']: # current node is the destination, print the detail about the packet
+			print("I received a packet from " + packet['source'])
+			print("Packet contains:")
+			print(packet['content'])
+		elif currNode == packet['edge']: # current node is the edge so calculate new route path in the range
+			newpacket = genPkt(packet['source'],packet['destination'], currNode)
+			nextHop = packet['pathToEdge'].pop()
+			sendPkt(nextHop, packet)
+		else: # current is a node in the range, route the packet to the next hop
+			try:
 				nextHop = packet['pathToEdge'].pop()
-				sendPkt(nextHop, packet)
-			else: # current is a node in the range, route the packet to the next hop
-				try:
-					nextHop = packet['pathToEdge'].pop()
-				except:
-					print("The pathToEdge term is empty, nothing to be popped")
-				sendPkt(nextHop, packet)
+			except:
+				print("The pathToEdge term is empty, nothing to be popped")
+			sendPkt(nextHop, packet)
 
-		conn.close()
+	#s.close()
 
 def sendPkt(destination, packet): # send packet to the next hop, packet is a dictionary
 	global currNode
 	global ipTable
 	global PORT_SEND
 	HOST = ipTable[destination]
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.connect((HOST, PORT_SEND))
-	s.sendall(repr(packet))
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	addr = (HOST, PORT_SEND)
+	#s.connect((HOST, PORT_SEND))
+	s.sendto(repr(packet),addr)
 	s.close()
     
 
@@ -366,13 +367,14 @@ def changeVariable():
 			print 'Invalid Input'
 			
 def testSendPkt():
-	time.sleep(10)
+	time.sleep(3)
 	coord_A = Coord(0,0)
 	coord_B = Coord(2,0)
 	nodeMap['A'] = coord_A
 	nodeMap['B'] = coord_B
 	pkt = genPkt('A', 'B', 'A')
 	sendPkt('B', pkt)
+	print 'SENDPKT#######################'
 	
 	
 	
@@ -383,7 +385,7 @@ HOST = ''
 PORT = 8888 #routing table
 
 PORT_SEND = 23333 #packet
-PORT_RECV = 23334
+PORT_RECV = 23333
 
 ipTable[currNode] = currIP
 try:
