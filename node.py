@@ -380,8 +380,19 @@ def changeVariable():
         else:
             print 'Invalid Input'
 	
-	
-	
+def testSendPkt():
+	time.sleep(3)
+	coord_A = Coord(0,0)
+	coord_B = Coord(2,0)
+	coord_C = Coord(6,0)
+	nodeMap['A'] = coord_A
+	nodeMap['B'] = coord_B
+	nodeMap['C'] = coord_C
+	pkt = genPkt('A', 'C', 'A')
+	nexthop = pkt['pathToEdge'].pop()
+	pkt['routingPath'].append(currNode)
+	sendPkt(nexthop, pkt)
+	print 'SENDPKT#######################'
 
 '''MAIN'''
 
