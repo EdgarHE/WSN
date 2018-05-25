@@ -311,17 +311,15 @@ def createPath(destination):  # destination_node is a node in the range (i.e. ed
     return path
 
 
-def genPkt(source_node, coordS, destination_node, coordD,
+def genPkt(source_node, coordS_x, coordS_y, destination_node, coordD_x, coordD_y,
            current_node, coordC, content):  # destination_node is a node outside the range (i.e. final destination)
     packet = {}
     packet.update(source=source_node)
-    packet.update(coordSource_x=coordS.x)
-    packet.update(coordSource_y=coordS.y)
-    packet.update(coordSource=coordS)
+    packet.update(coordSource_x=coordS_x)
+    packet.update(coordSource_y=coordS_y)
     packet.update(destination=destination_node)
-    packet.update(coordDestination_x=coordD.x)
-    packet.update(coordDestination_y=coordD.y)
-    packet.update(coordDestination=coordD)
+    packet.update(coordDestination_x=coordD_x)
+    packet.update(coordDestination_y=coordD_y)
     packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
     # Content = input("Input something funny: ")
     packet.update(content=content)
@@ -330,22 +328,21 @@ def genPkt(source_node, coordS, destination_node, coordD,
     return packet
 
 
-def transPkt(source_node, coordS, destination_node, coordD,
+def transPkt(source_node, coordS_x, coordS_y, destination_node, coordD_x, coordD_y,
              current_node, coordC):  # destination_node is a node outside the range (i.e. final destination)
     packet = {}
     packet.update(source=source_node)
-    packet.update(coordSource_x=coordS.x)
-    packet.update(coordSource_y=coordS.y)
-    packet.update(coordSource=coordS)
+    packet.update(coordSource_x=coordS_x)
+    packet.update(coordSource_y=coordS_y)
     packet.update(destination=destination_node)
-    packet.update(coordDestination_x=coordD.x)
-    packet.update(coordDestination_y=coordD.y)
-    packet.update(coordDestination=coordD)
+    packet.update(coordDestination_x=coordD_x)
+    packet.update(coordDestination_y=coordD_y)
     packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
     packet.update(content="I am a cute packet from " + source_node + " to " + destination_node)
     packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
     packet.update(routingPath=[])
     return packet
+
 
 def recvAndTreatPkt():  # receive, check, print or route/send the packet
 
@@ -369,8 +366,8 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
             print(packet['routingPath'])
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
             currentC = Coord(currX, currY)
-            newpacket = transPkt(packet['source'], packet['coordSource'], packet['destination'],
-                               packet['coordDestination'], currNode, currentC)
+            newpacket = transPkt(packet['source'], packet['coordSource_x'], packet['coordSource_y'],packet['destination'],
+                                 packet['coordDestination_x'], packet['coordDestination_y'], currNode, currentC)
             newpacket['content'] = packet['content']
             temphop = newpacket['pathToEdge'].pop()
             prevroute = packet['routingPath'].pop()
@@ -380,9 +377,9 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
                 newpacket['routingPath'] = packet['routingPath']
                 newpacket['routingPath'].append(currNode)
                 nextHop = newpacket['pathToEdge'].pop()
-            	sendPkt(nextHop, newpacket)
+                sendPkt(nextHop, newpacket)
             else:
-				print("routing table is empty!")
+                print("routing table is empty!")
         else:  # current is a node in the range, route the packet to genPktthe next hop
             try:
                 nextHop = packet['pathToEdge'].pop()
@@ -442,7 +439,7 @@ def createInput():
 								sendMsg = data.split(':')[1]
 								if len(sendMsg) != 0:
 									
-									pkt = genPkt(currNode, Coord(currX,currY), destNode, Coord(destX,destY), currNode, Coord(currX,currY), sendMsg)
+									pkt = genPkt(currNode, currX, currY, destNode, destX, destY, currNode, Coord(currX,currY), sendMsg)
 									nexthop = pkt['pathToEdge'].pop()
 									pkt['routingPath'].append(currNode)
 									sendPkt(nexthop, pkt)
