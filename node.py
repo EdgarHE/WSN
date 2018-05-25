@@ -315,23 +315,28 @@ def genPkt(source_node, coordS, destination_node, coordD,
            current_node, coordC, content):  # destination_node is a node outside the range (i.e. final destination)
     packet = {}
     packet.update(source=source_node)
-    packet.update(coordSource=coordS)
+    packet.update(coordSource_x=coordS.x)
+    packet.update(coordSource_y=coordS.y)
     packet.update(destination=destination_node)
-    packet.update(coordDestination=coordD)
+    packet.update(coordDestination_x=coordD.x)
+    packet.update(coordDestination_y=coordD.y)
     packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
-    #Content = input("Input something funny: ")
+    # Content = input("Input something funny: ")
     packet.update(content=content)
     packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
     packet.update(routingPath=[])
     return packet
 
+
 def transPkt(source_node, coordS, destination_node, coordD,
-           current_node, coordC):  # destination_node is a node outside the range (i.e. final destination)
+             current_node, coordC):  # destination_node is a node outside the range (i.e. final destination)
     packet = {}
     packet.update(source=source_node)
-    packet.update(coordSource=coordS)
+    packet.update(coordSource_x=coordS.x)
+    packet.update(coordSource_y=coordS.y)
     packet.update(destination=destination_node)
-    packet.update(coordDestination=coordD)
+    packet.update(coordDestination_x=coordD.x)
+    packet.update(coordDestination_y=coordD.y)
     packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
     packet.update(content="I am a cute packet from " + source_node + " to " + destination_node)
     packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
