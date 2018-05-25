@@ -29,7 +29,7 @@ currX = 2
 currY = 0
 currSeq = 0
 currEnergy = 100
-currIP = getip('enp0s31f6')
+currIP = getip('eth0')
 print currIP
 
 send_state = threading.Lock()
