@@ -43,7 +43,12 @@ class Coord:
         self.x = coordx
         self.y = coordy
 
-
+def initial():
+	global routingTable, inNI
+	routingTable = {}
+	inNI = {} # In region node info
+	#nodeMap = {} #'A':coord_A  coord_A = Coord(1,1)
+	
 def sendHello(PORT):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -90,8 +95,9 @@ def storeReceiveMsg(recvData):
 
         if node == currNode:
             return
-        print 'data   ' + data
+        print 'recvdata   ' + data
         nodeCoord = data.split(';')[2].split(',')[1]
+
         nodeIP = data.split(';')[2].split(',')[2]
         if blockNum == 3:
             addToInNI(node, seqNum, nodeCoord, nodeIP)
@@ -160,7 +166,7 @@ def updateRoutingTable():
             inNI.pop(key2)
         scanSeq()
         storeNI_state.release()
-        time.sleep(1)
+        time.sleep(0.5)
 
 
 def dealInNIMsg(node):
@@ -192,7 +198,14 @@ def dealInNIMsg(node):
                     if nodeInRTInfo != 'None':
                         currCost = int(currNodeInfo.split(',')[2]) + int(nodeInRTInfo.split(';')[1])
                         currPath = nodeName + currNodeInfo.split(',')[3]
-                        updateNodeInfo(currNodeName, currCoord, currCost, currPath)
+                        
+                        isInRT = routingTable.get(currNodeName, 'None')
+                        if isInRT != 'None':
+							routingCoord = isInRT.split(';')[0]
+							#print routingCoord + '-------------' + currCoord
+							if routingCoord == currCoord:
+								#print routingCoord + '-------------' + currCoord
+								updateNodeInfo(currNodeName, currCoord, currCost, currPath)
 
 
 # return
@@ -218,11 +231,12 @@ def updateNodeInfo(node, coord, cost, path):
     else:
         routingCost = int(isInRT.split(';')[1])
         routingCoord = isInRT.split(';')[0]
+   
         # print('cost:' + str(cost))
         # print('routingCost:' + path + str(routingCost))
         if routingCoord != coord:
             routingTable[node] = coord + ';' + str(cost) + ';' + path
-        if routingCost > cost:
+        if routingCost > cost and path.count(currNode)<1:
             routingTable[node] = coord + ';' + str(cost) + ';' + path
 
     return
@@ -253,6 +267,7 @@ def scanSeq():
     global ipTable
     for key in seqT:
         nodes = []
+        #print ipTable
         if (currSeq - int(seqT[key].split(' ')[1])) > 5:
             for node in routingTable:
                 if routingTable[node].find(key) != -1:
@@ -260,22 +275,22 @@ def scanSeq():
             for element in nodes:
                 if routingTable.get(element, 'None') != 'None':
                     routingTable.pop(element)
-                    ipTable.pop(element)
+                    if ipTable.get(element, 'None') != 'None':
+						ipTable.pop(element)
             seqT[key] = str(0) + ' ' + str(currSeq)
 
 
-def getEdge(source, destination):  # destination_node is a node outside the range (i.e. final destination)
-    # global routingTable
-    vector1X = nodeMap[destination].x - nodeMap[source].x  # vector_X from source to destination
-    vector1Y = nodeMap[destination].y - nodeMap[source].y  # vector_Y from source to destination
-    product = -10000  # means negative infinity
+def getEdge(coordS, coordD): # destination_node is a node outside the range (i.e. final destination)
+    vector1X = coordD.x - coordS.x # vector_X from source to destination
+    vector1Y = coordD.y - coordS.y # vector_Y from source to destination
+    product = -1000
     if len(routingTable) > 0:
         for node in routingTable:
             location = routingTable[node].split(';')[0]
             locationX = float(location.split(' ')[0])
             locationY = float(location.split(' ')[1])
-            vector2X = locationX - nodeMap[source].x  # vector_X from source to neighbor
-            vector2Y = locationY - nodeMap[source].y  # vector_Y from source to neighbor
+            vector2X = locationX - coordS.x # vector_X from source to neighbor
+            vector2Y = locationY - coordD.y # vector_Y from source to neighbor
             newproduct = vector1X * vector2X + vector1Y * vector2Y
             if newproduct > product:  # record the max_product
                 product = newproduct
@@ -283,7 +298,6 @@ def getEdge(source, destination):  # destination_node is a node outside the rang
         return edge
     else:
         return 'None'
-
 
 def createPath(destination):  # destination_node is a node in the range (i.e. edge node)
     storeNI_state.acquire()
@@ -297,17 +311,32 @@ def createPath(destination):  # destination_node is a node in the range (i.e. ed
     return path
 
 
-def genPkt(source_node, destination_node,
-           current_node):  # destination_node is a node outside the range (i.e. final destination)
+def genPkt(source_node, coordS, destination_node, coordD,
+           current_node, coordC, content):  # destination_node is a node outside the range (i.e. final destination)
     packet = {}
     packet.update(source=source_node)
+    packet.update(coordSource=coordS)
     packet.update(destination=destination_node)
-    packet.update(edge=getEdge(current_node, destination_node))  # Edge is a node at the edge of the range
-    packet.update(content="I am a cute packet from " + source_node + " to " + destination_node)
-    packet.update(pathToEdge=createPath(getEdge(current_node, destination_node)))
+    packet.update(coordDestination=coordD)
+    packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
+    #Content = input("Input something funny: ")
+    packet.update(content=content)
+    packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
     packet.update(routingPath=[])
     return packet
 
+def transPkt(source_node, coordS, destination_node, coordD,
+           current_node, coordC):  # destination_node is a node outside the range (i.e. final destination)
+    packet = {}
+    packet.update(source=source_node)
+    packet.update(coordSource=coordS)
+    packet.update(destination=destination_node)
+    packet.update(coordDestination=coordD)
+    packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
+    packet.update(content="I am a cute packet from " + source_node + " to " + destination_node)
+    packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
+    packet.update(routingPath=[])
+    return packet
 
 def recvAndTreatPkt():  # receive, check, print or route/send the packet
 
@@ -330,7 +359,11 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
             print("Routing path is:")
             print(packet['routingPath'])
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
-            newpacket = genPkt(packet['source'], packet['destination'], currNode)
+            currentC.x = currX
+            currentC.y = currY
+            newpacket = transPkt(packet['source'], packet['coordSource'], packet['destination'],
+                               packet['coordDestination'], currNode, currentC)
+            newpacket['content'] = packet['content']
             temphop = newpacket['pathToEdge'].pop()
             prevroute = packet['routingPath'].pop()
             if newpacket['edge'] != 'None' and temphop != prevroute:
@@ -342,7 +375,7 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
             	sendPkt(nextHop, newpacket)
             else:
 				print("routing table is empty!")
-        else:  # current is a node in the range, route the packet to the next hop
+        else:  # current is a node in the range, route the packet to genPktthe next hop
             try:
                 nextHop = packet['pathToEdge'].pop()
             except:
@@ -365,30 +398,70 @@ def sendPkt(destination, packet):  # send packet to the next hop, packet is a di
     s.close()
 
 
-def changeVariable():
-    global currX, currY
-    while True:
-        data = raw_input()
-        if data.find('coord:') != -1:
-            coord = data.split(':')[1]
-            if coord.find(' ') != -1:
-                x = coord.split(' ')[0]
-                y = coord.split(' ')[1]
-                if x.isdigit() and y.isdigit():
-                    currX = int(x)
-                    currY = int(y)
-                else:
-                    print 'Invalid Input'
-            else:
-                print 'Invalid Input'
-        else:
-            print 'Invalid Input'
+def createInput():
+	global currX, currY
+	while True:
+		data = raw_input()
+		if data.find('coord:') != -1:
+			coord = data.split(':')[1]
+			if coord.find(' ') != -1:
+				x = coord.split(' ')[0]
+				y = coord.split(' ')[1]
+				if x.isdigit() and y.isdigit():
+					currX = int(x)
+					currY = int(y)
+					initial()
+					print 'Change the coordinate of node ' + currNode + ' to (' + str(currX) + ',' + str(currY) + ')'
+				else:
+					print 'Invalid Input'
+			else:
+				print 'Invalid Input'
+		
+		elif data.find('pkt;') != -1: #pkt;P 0 1:xxxxxx
+			if data.find(':') != -1:
+				destInfo = data.split(':')[0].split(';', 1)[1]
+				if destInfo.find(' ') != -1:
+					tempNode = destInfo.split(' ')[0]
+					if tempNode.isupper():
+						destNode = tempNode
+						tempCoord = destInfo.split(' ', 1)[1]
+						if tempCoord.find(' ') != -1:
+							x = tempCoord.split(' ')[0]
+							y = tempCoord.split(' ')[1]
+							if x.isdigit() and y.isdigit():
+								destX = int(x)
+								destY = int(y)
+								sendMsg = data.split(':')[1]
+								if len(sendMsg) != 0:
+									if nodeMap.get(destNode, 'None')!='None':
+										
+										pkt = genPkt(currNode, Coord(currX,currY), destNode, Coord(destX,destY), currNode, Coord(currX,currY), sendMsg)
+										nexthop = pkt['pathToEdge'].pop()
+										pkt['routingPath'].append(currNode)
+										sendPkt(nexthop, pkt)
+										print destNode + ':' + str(destX) + ' ' + str(destY) + ' :' + sendMsg
+								else:
+									print 'Nothing to send'
+							else:
+								print 'Invalid input'
+						else :
+							print 'Invalid input'
+					else:
+						print 'Invalid input'
+				else:
+					print 'Invalid input'
+			else:
+				print 'Invalid input'
+
+			
+		else:
+			print 'Invalid Input'
 	
 def testSendPkt():
 	time.sleep(3)
 	coord_A = Coord(0,0)
 	coord_B = Coord(2,0)
-	coord_C = Coord(6,0)
+	coord_C = Coord(4,0)
 	nodeMap['A'] = coord_A
 	nodeMap['B'] = coord_B
 	nodeMap['C'] = coord_C
@@ -411,8 +484,8 @@ try:
 	thread.start_new_thread( sendHello, (PORT, ) )
 	thread.start_new_thread( recvHello, (PORT, ) )
 	thread.start_new_thread( updateRoutingTable, ( ) )
-	thread.start_new_thread( changeVariable, ( ) )
-	thread.start_new_thread( testSendPkt, ( ) )
+	thread.start_new_thread( createInput, ( ) )
+	#thread.start_new_thread( testSendPkt, ( ) )
 	thread.start_new_thread( recvAndTreatPkt, ( ) )
 except:
 	print "Error: unable to start thread"
