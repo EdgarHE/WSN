@@ -60,7 +60,7 @@ def sendHello(PORT):
         data = genHelloMsg()
         s.sendto(data, addr)
         storeNI_state.acquire()
-        print 'send: ' + data
+        #print 'send: ' + data
         storeNI_state.release()
         time.sleep(1)
 
@@ -77,7 +77,7 @@ def recvHello(PORT):
         data, addr = s.recvfrom(100)
         storeNI_state.acquire()
         storeReceiveMsg(data)
-        print routingTable
+        #print routingTable
         storeNI_state.release()
 
 
@@ -95,7 +95,7 @@ def storeReceiveMsg(recvData):
 
         if node == currNode:
             return
-        print 'recvdata   ' + data
+        #print 'recvdata   ' + data
         nodeCoord = data.split(';')[2].split(',')[1]
 
         nodeIP = data.split(';')[2].split(',')[2]
@@ -441,13 +441,12 @@ def createInput():
 								destY = int(y)
 								sendMsg = data.split(':')[1]
 								if len(sendMsg) != 0:
-									if nodeMap.get(destNode, 'None')!='None':
-										
-										pkt = genPkt(currNode, Coord(currX,currY), destNode, Coord(destX,destY), currNode, Coord(currX,currY), sendMsg)
-										nexthop = pkt['pathToEdge'].pop()
-										pkt['routingPath'].append(currNode)
-										sendPkt(nexthop, pkt)
-										print destNode + ':' + str(destX) + ' ' + str(destY) + ' :' + sendMsg
+									
+									pkt = genPkt(currNode, Coord(currX,currY), destNode, Coord(destX,destY), currNode, Coord(currX,currY), sendMsg)
+									nexthop = pkt['pathToEdge'].pop()
+									pkt['routingPath'].append(currNode)
+									sendPkt(nexthop, pkt)
+									print destNode + ':' + str(destX) + ' ' + str(destY) + ' :' + sendMsg
 								else:
 									print 'Nothing to send'
 							else:
