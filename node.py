@@ -23,9 +23,9 @@ inNI = {}  # In region node info
 seqT = {}  # Sequence number
 ipTable = {}
 nodeMap = {}  # 'A':coord_A  coord_A = Coord(1,1)
-radius = 5
-currNode = 'B'  # Current Node
-currX = 2
+radius = 3
+currNode = 'A'  # Current Node
+currX = 0
 currY = 0
 currSeq = 0
 currEnergy = 100
@@ -327,7 +327,7 @@ def genPkt(source_node, coordS_x, coordS_y, destination_node, coordD_x, coordD_y
     coordD = Coord(coordD_x, coordD_y)
     if destination_node in routingTable:
         packet.update(edge=destination_node)
-        packet.update(pathToEdge=createPath(edge))
+        packet.update(pathToEdge=createPath(destination_node))
     else:
         packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
         packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
@@ -349,7 +349,7 @@ def transPkt(source_node, coordS_x, coordS_y, destination_node, coordD_x, coordD
     coordD = Coord(coordD_x, coordD_y)
     if destination_node in routingTable:
         packet.update(edge=destination_node)
-        packet.update(pathToEdge=createPath(edge))
+        packet.update(pathToEdge=createPath(destination_node))
     else:
         packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
         packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
@@ -454,13 +454,12 @@ def createInput():
                                 destY = int(y)
                                 sendMsg = data.split(':')[1]
                                 if len(sendMsg) != 0:
-                                    if nodeMap.get(destNode, 'None') != 'None':
-                                        pkt = genPkt(currNode, currX, currY, destNode, destX, destY,
-                                                     currNode, Coord(currX, currY), sendMsg)
-                                        nexthop = pkt['pathToEdge'].pop()
-                                        pkt['routingPath'].append(currNode)
-                                        sendPkt(nexthop, pkt)
-                                        print destNode + ':' + str(destX) + ' ' + str(destY) + ' :' + sendMsg
+									pkt = genPkt(currNode, currX, currY, destNode, destX, destY,
+												 currNode, Coord(currX, currY), sendMsg)
+									nexthop = pkt['pathToEdge'].pop()
+									pkt['routingPath'].append(currNode)
+									sendPkt(nexthop, pkt)
+									print destNode + ':' + str(destX) + ' ' + str(destY) + ' :' + sendMsg
                                 else:
                                     print 'Nothing to send'
                             else:
@@ -479,21 +478,6 @@ def createInput():
             print 'Invalid Input'
 
 
-def testSendPkt():
-    time.sleep(3)
-    coord_A = Coord(0, 0)
-    coord_B = Coord(2, 0)
-    coord_C = Coord(4, 0)
-    nodeMap['A'] = coord_A
-    nodeMap['B'] = coord_B
-    nodeMap['C'] = coord_C
-    pkt = genPkt('A', 'C', 'A')
-    nexthop = pkt['pathToEdge'].pop()
-    pkt['routingPath'].append(currNode)
-    sendPkt(nexthop, pkt)
-    print 'SENDPKT#######################'
-
-
 '''MAIN'''
 
 HOST = ''
@@ -508,10 +492,8 @@ try:
     thread.start_new_thread(recvHello, (PORT,))
     thread.start_new_thread(updateRoutingTable, ( ))
     thread.start_new_thread(createInput, ( ))
-    # thread.start_new_thread( testSendPkt, ( ) )
     thread.start_new_thread(recvAndTreatPkt, ( ))
 except:
     print "Error: unable to start thread"
 while 1:
     pass
-
