@@ -364,8 +364,7 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
             print("Routing path is:")
             print(packet['routingPath'])
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
-            currentC.x = currX
-            currentC.y = currY
+            currentC = Coord(currX, currY)
             newpacket = transPkt(packet['source'], packet['coordSource'], packet['destination'],
                                packet['coordDestination'], currNode, currentC)
             newpacket['content'] = packet['content']
