@@ -320,6 +320,7 @@ def genPkt(source_node, coordS_x, coordS_y, destination_node, coordD_x, coordD_y
     packet.update(destination=destination_node)
     packet.update(coordDestination_x=coordD_x)
     packet.update(coordDestination_y=coordD_y)
+    coordD = Coord(coordD_x, coordD_y)
     packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
     # Content = input("Input something funny: ")
     packet.update(content=content)
@@ -337,6 +338,7 @@ def transPkt(source_node, coordS_x, coordS_y, destination_node, coordD_x, coordD
     packet.update(destination=destination_node)
     packet.update(coordDestination_x=coordD_x)
     packet.update(coordDestination_y=coordD_y)
+    coordD = Coord(coordD_x, coordD_y)
     packet.update(edge=getEdge(coordC, coordD))  # Edge is a node at the edge of the range
     packet.update(content="I am a cute packet from " + source_node + " to " + destination_node)
     packet.update(pathToEdge=createPath(getEdge(coordC, coordD)))
