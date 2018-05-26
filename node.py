@@ -24,9 +24,9 @@ seqT = {}  # Sequence number
 ipTable = {}
 nodeMap = {}  # 'A':coord_A  coord_A = Coord(1,1)
 radius = 3
-currNode = 'A'  # Current Node
-currX = 0
-currY = 0
+currNode = 'B'  # Current Node
+currX = 1
+currY = 4
 currSeq = 0
 currEnergy = 100
 currIP = getip('eth0')
@@ -49,8 +49,16 @@ def initial():
     routingTable = {}
     inNI = {}  # In region node info
 
-
-# nodeMap = {} #'A':coord_A  coord_A = Coord(1,1)
+def sendRoutingTable(PORT):
+    HOST = currIP
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    while True:
+		addr = (HOST, PORT)
+		data = repr(routingTable)
+		data = currNode + data
+		s.sendto(data, addr)
+		time.sleep(3)
+    s.close()
 
 def sendHello(PORT):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -80,7 +88,7 @@ def recvHello(PORT):
         data, addr = s.recvfrom(100)
         storeNI_state.acquire()
         storeReceiveMsg(data)
-        print routingTable
+        #print routingTable
         storeNI_state.release()
 
 
@@ -200,7 +208,7 @@ def dealInNIMsg(node):
                     nodeInRTInfo = routingTable.get(nodeName, 'None')
                     if nodeInRTInfo != 'None':
                         currCost = int(currNodeInfo.split(',')[2]) + int(nodeInRTInfo.split(';')[1])
-			tempPath = routingTable[nodeName].split(';')[2]
+                        tempPath = routingTable[nodeName].split(';')[2]
                         currPath = tempPath + currNodeInfo.split(',')[3]
 
                         isInRT = routingTable.get(currNodeName, 'None')
@@ -486,6 +494,7 @@ PORT = 8888  # routing table
 
 PORT_SEND = 23333  # packet
 PORT_RECV = 23333
+PORT_SENDRT = 23444
 
 ipTable[currNode] = currIP
 try:
@@ -494,6 +503,7 @@ try:
     thread.start_new_thread(updateRoutingTable, ( ))
     thread.start_new_thread(createInput, ( ))
     thread.start_new_thread(recvAndTreatPkt, ( ))
+    thread.start_new_thread(sendRoutingTable, (PORT_SENDRT,))
 except:
     print "Error: unable to start thread"
 while 1:
