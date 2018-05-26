@@ -384,11 +384,9 @@ def recvAndTreatPkt():  # receive, check, print or route/send the packet
         # else:
         packet = eval(data)  # retrive the dictionary from string, packet is a dictionary
         if currNode == packet['destination']:  # current node is the destination, print the detail about the packet
-            print("I received a packet from " + packet['source'])
-            print("Packet contains:")
-            print(packet['content'])
-            print("Routing path is:")
-            print(packet['routingPath'])
+            print("******** I received a packet from " + packet['source'] + "********")
+            print("Packet contains:" + packet['content'])
+            print("Routing path is:" + packet['routingPath'])
         elif currNode == packet['edge']:  # current node is the edge so calculate new route path in the range
             currentC = Coord(currX, currY)
             newpacket = transPkt(packet['source'], packet['coordSource_x'], packet['coordSource_y'],packet['destination'],
