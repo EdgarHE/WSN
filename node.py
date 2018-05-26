@@ -477,7 +477,7 @@ def createInput():
 									nexthop = pkt['pathToEdge'].pop()
 									pkt['routingPath'].append(currNode)
 									sendPkt(nexthop, pkt)
-									print destNode + ':' + str(destX) + ' ' + str(destY) + ' :' + sendMsg
+									print 'Send a packet to ' + destNode + ':' + sendMsg
                                 else:
                                     print 'Nothing to send'
                             else:
