@@ -200,7 +200,7 @@ def dealInNIMsg(node):
                     nodeInRTInfo = routingTable.get(nodeName, 'None')
                     if nodeInRTInfo != 'None':
                         currCost = int(currNodeInfo.split(',')[2]) + int(nodeInRTInfo.split(';')[1])
-			tempPath = routingTable(nodeName).split(';')[2]
+			tempPath = routingTable[nodeName].split(';')[2]
                         currPath = tempPath + currNodeInfo.split(',')[3]
 
                         isInRT = routingTable.get(currNodeName, 'None')
