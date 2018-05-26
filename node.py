@@ -427,7 +427,7 @@ def sendPkt(destination, packet):  # send packet to the next hop, packet is a di
 
 
 def createInput():
-    global currX, currY
+    global currX, currY, radius
     while True:
         data = raw_input()
         if data.find('coord:') != -1:
@@ -442,6 +442,17 @@ def createInput():
                     print 'Change the coordinate of node ' + currNode + ' to (' + str(currX) + ',' + str(currY) + ')'
                 else:
                     print 'Invalid Input'
+            else:
+                print 'Invalid Input'
+        elif data.find('radius:') != -1:
+            tempRadius = data.split(':')[1]
+            if tempRadius.isdigit() :
+                tempRadius = int(tempRadius)
+                if int(tempRadius) > 0:
+                    radius = int(tempRadius)
+                    print 'Change the radius of node ' + currNode + ' to ' + str(radius)
+                else:
+					print 'Radius should greater than 0'
             else:
                 print 'Invalid Input'
 
