@@ -291,7 +291,7 @@ def scanSeq():
                         ipTable.pop(element)
             seqT[key] = str(0) + ' ' + str(currSeq)
 
-
+# Projection
 def getEdge(coordS, coordD):  # destination_node is a node outside the range (i.e. final destination)
     vector1X = coordD.x - coordS.x  # vector_X from source to destination
     vector1Y = coordD.y - coordS.y  # vector_Y from source to destination
