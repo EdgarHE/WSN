@@ -246,7 +246,7 @@ def updateNodeInfo(node, coord, cost, path):
 
         # print('cost:' + str(cost))
         # print('routingCost:' + path + str(routingCost))
-        if routingCoord != coord:
+        if routingCoord != coord and path.count(currNode) < 1:
             routingTable[node] = coord + ';' + str(cost) + ';' + path
         if routingCost > cost and path.count(currNode) < 1:
             routingTable[node] = coord + ';' + str(cost) + ';' + path
@@ -325,7 +325,7 @@ def getEdge(coordS, coordD):  # destination_node is a node outside the range (i.
             locationX = float(location.split(' ')[0])
             locationY = float(location.split(' ')[1])
             vector2X = locationX - coordS.x  # vector_X from source to neighbor
-            vector2Y = locationY - coordD.y  # vector_Y from source to neighbor
+            vector2Y = locationY - coordS.y  # vector_Y from source to neighbor
             newproduct = vector1X * vector2X + vector1Y * vector2Y
             norme1 = math.sqrt(vector1X * vector1X + vector1Y * vector1Y)
             norme2 = math.sqrt(vector2X * vector2X + vector2Y * vector2Y)
