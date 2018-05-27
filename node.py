@@ -311,6 +311,30 @@ def getEdge(coordS, coordD):  # destination_node is a node outside the range (i.
     else:
         return 'None'
 
+'''
+# Angle
+def getEdge(coordS, coordD):  # destination_node is a node outside the range (i.e. final destination)
+    vector1X = coordD.x - coordS.x  # vector_X from source to destination
+    vector1Y = coordD.y - coordS.y  # vector_Y from source to destination
+    cosvalue = -1000
+    if len(routingTable) > 0:
+        for node in routingTable:
+            location = routingTable[node].split(';')[0]
+            locationX = float(location.split(' ')[0])
+            locationY = float(location.split(' ')[1])
+            vector2X = locationX - coordS.x  # vector_X from source to neighbor
+            vector2Y = locationY - coordD.y  # vector_Y from source to neighbor
+            newproduct = vector1X * vector2X + vector1Y * vector2Y
+            norme1 = math.sqrt(vector1X * vector1X + vector1Y * vector1Y)
+            norme2 = math.sqrt(vector2X * vector2X + vector2Y * vector2Y)
+            newcosvalue = newproduct / (norme1 * norme2)
+            if newcosvalue > cosvalue:  # record the max_cosvalue
+                cosvalue = newcosvalue
+                edge = node
+        return edge
+    else:
+        return 'None'
+'''
 
 def createPath(destination):  # destination_node is a node in the range (i.e. edge node)
     storeNI_state.acquire()
